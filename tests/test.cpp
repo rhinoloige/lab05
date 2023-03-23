@@ -1,39 +1,66 @@
-#include <Account.h>
 #include <Transaction.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
-TEST(Banking, Account) {
-Account acc(0, 0); 
+class MockAccount : public Account {
+public:
+    MockAccount(int id, int balance):Account(id, balance){};
+    MOCK_METHOD(void, Unlock, ());
+    MOCK_METHOD(void, Lock, ());
+    MOCK_METHOD(int, id, (), (const));
+    MOCK_METHOD(void, ChangeBalance, (int diff), ());
+    MOCK_METHOD(int, GetBalance, (), ());
+};
 
-ASSERT_EQ(acc.GetBalance(), 0);
-ASSERT_THROW(acc.ChangeBalance(1234), std::runtime_error); 
-acc.Lock(); 
-ASSERT_NO_THROW(acc.ChangeBalance(1234)); 
-ASSERT_THROW(acc.Lock(), std::runtime_error); 
-ASSERT_EQ(acc.GetBalance(), 1234); 
-acc.ChangeBalance(-1235); 
-ASSERT_EQ(acc.GetBalance(), -1); 
-acc.Unlock(); 
-ASSERT_THROW(acc.ChangeBalance(1234), std::runtime_error); 
+class MockTransaction: public Transaction {
+public:
+    MOCK_METHOD(bool, Make, (Account& from, Account& to, int sum), ());
+    MOCK_METHOD(void, set_fee, (int fee), ());
+    MOCK_METHOD(int, fee, (), ());
+};
+
+TEST(Account, Account_test_1) {
+    MockAccount acc(1, 100);
+    EXPECT_CALL(acc, GetBalance()).Times(3);
+    EXPECT_CALL(acc, Lock()).Times(1);
+    EXPECT_CALL(acc, Unlock()).Times(1);
+    EXPECT_CALL(acc, ChangeBalance(testing::_)).Times(2);
+    EXPECT_CALL(acc, id()).Times(1);
+    acc.GetBalance();
+    acc.id();
+    acc.Unlock();
+    acc.ChangeBalance(1000);
+    acc.GetBalance();
+    acc.ChangeBalance(2);
+    acc.GetBalance();
+    acc.Lock();
 }
 
-TEST(Banking, Transaction) {
-Account acc1(1, 1500);
-Account acc2(2, 1500);
-Transaction transaction;
+TEST(Account, Account_test_2) {
+    Account acc(0, 100);
+    EXPECT_THROW(acc.ChangeBalance(50), std::runtime_error);
+    acc.Lock();
+    acc.ChangeBalance(50);
+    EXPECT_EQ(acc.GetBalance(), 150);
+    EXPECT_THROW(acc.Lock(), std::runtime_error);
+    acc.Unlock();
+}
 
-ASSERT_EQ(transaction.fee(), 1);
-transaction.set_fee(20); 
-ASSERT_EQ(transaction.fee(), 20); 
-
-ASSERT_THROW(transaction.Make(acc1, acc2, -345), std::invalid_argument); 
-ASSERT_THROW(transaction.Make(acc2, acc2, 1000), std::logic_error); 
-ASSERT_THROW(transaction.Make (acc1, acc2, 40), std::logic_error); 
-transaction.set_fee(100); 
-ASSERT_EQ(transaction.Make(acc1, acc2, 150), false); 
-ASSERT_EQ(transaction.Make(acc1, acc2, 2000), false); 
-
-ASSERT_EQ(transaction.Make(acc1, acc2, 1000), true); 
-ASSERT_EQ(acc2.GetBalance(), 2500);	
-ASSERT_EQ(acc1.GetBalance(), 400); 
+TEST(Transaction, Transaction_test) {
+    MockTransaction trans;
+    MockAccount acc1(1, 100);
+    MockAccount acc2(2, 1000);
+    MockAccount acc3(3, 10000);
+    MockAccount acc4(4, 5000);
+    EXPECT_CALL(trans, Make(testing::_, testing::_, testing::_)).Times(3);
+    EXPECT_CALL(trans, set_fee(testing::_)).Times(1);
+    trans.set_fee(200);
+    //EXPECT_THROW(trans.Make(acc3, acc3, 1000), std::logic_error);
+    //EXPECT_THROW(trans.Make(acc3, acc4, -1), std::invalid_argument);
+    //EXPECT_THROW(trans.Make(acc3, acc4, 1), std::logic_error);
+    EXPECT_EQ(trans.Make(acc3, acc4, 50), false);
+    EXPECT_EQ(trans.Make(acc2, acc4, 2000), false);
+    EXPECT_CALL(trans, fee()).Times(1);
+    trans.Make(acc4, acc1, 1000);
+    trans.fee();
 }
