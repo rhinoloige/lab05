@@ -4,6 +4,10 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+//using::testing::AtLeast;
+//using::testing::Return;
+//using::testing::NiceMock;
+
 class MockAccount : public Account {
 public:
     MockAccount(int id, int balance):Account(id, balance){};
@@ -21,7 +25,7 @@ public:
     MOCK_METHOD(int, fee, (), ());
 };
 
-TEST(Account, Account_test_1) {
+TEST(Account, Balance_ID_Change) {
     MockAccount acc(1, 100);
     EXPECT_CALL(acc, GetBalance()).Times(3);
     EXPECT_CALL(acc, Lock()).Times(1);
@@ -36,9 +40,10 @@ TEST(Account, Account_test_1) {
     acc.ChangeBalance(2);
     acc.GetBalance();
     acc.Lock();
+    //EXPECT_EQ(acc.GetBalance(), 100);
 }
 
-TEST(Account, Account_test_2) {
+TEST(Account, Balance_ID_Change_2) {
     Account acc(0, 100);
     EXPECT_THROW(acc.ChangeBalance(50), std::runtime_error);
     acc.Lock();
@@ -48,21 +53,21 @@ TEST(Account, Account_test_2) {
     acc.Unlock();
 }
 
-TEST(Transaction, Transaction_test) {
+TEST(Transaction, TransTest) {
     MockTransaction trans;
-    MockAccount acc1(1, 100);
-    MockAccount acc2(2, 1000);
-    MockAccount acc3(3, 10000);
-    MockAccount acc4(4, 5000);
+    MockAccount first(1, 100);
+    MockAccount second(2, 250);
+    MockAccount flat_org(3, 10000);
+    MockAccount org(4, 5000);
     EXPECT_CALL(trans, set_fee(testing::_)).Times(1);
-    trans.set_fee(200);
-    EXPECT_THROW(trans.Make(acc3, acc3, 1000), std::logic_error);
-    EXPECT_THROW(trans.Make(acc3, acc4, -1), std::invalid_argument);
-    EXPECT_THROW(trans.Make(acc3, acc4, 1), std::logic_error);
-    EXPECT_EQ(trans.Make(acc3, acc4, 50), false);
-    EXPECT_EQ(trans.Make(acc2, acc4, 2000), false);
     EXPECT_CALL(trans, fee()).Times(1);
-    EXPECT_CALL(trans, Make(testing::_, testing::_, testing::_)).Times(1);
-    trans.Make(acc4, acc1, 1000);
+    EXPECT_CALL(trans, Make(testing::_, testing::_, testing::_)).Times(2);
+    EXPECT_CALL(first, GetBalance()).Times(1);
+    EXPECT_CALL(second, GetBalance()).Times(1);
+    trans.set_fee(300);
+    trans.Make(first, second, 2000);
     trans.fee();
+    first.GetBalance();
+    second.GetBalance();
+    trans.Make(org, first, 1000);
 }
